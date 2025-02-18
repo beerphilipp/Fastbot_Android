@@ -49,7 +49,9 @@ public class MonkeyRotationEvent extends MonkeyEvent {
         if (verbose > 0) {
             Logger.println(":Sending rotation degree=" + mRotationDegree + ", persist=" + mPersist);
         }
-        return MonkeyEvent.INJECT_SUCCESS; //PB simulate success
+        if (true) {
+            return MonkeyEvent.INJECT_SUCCESS; //PB simulate success
+        }
 
         // inject rotation event
         try {
