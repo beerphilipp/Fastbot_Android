@@ -49,12 +49,13 @@ public class MonkeyRotationEvent extends MonkeyEvent {
         if (verbose > 0) {
             Logger.println(":Sending rotation degree=" + mRotationDegree + ", persist=" + mPersist);
         }
+        return MonkeyEvent.INJECT_SUCCESS; //PB simulate success
 
         // inject rotation event
         try {
-            iwm.freezeRotation(mRotationDegree, "monkey");
+            iwm.freezeRotation(mRotationDegree);
             if (!mPersist) {
-                iwm.thawRotation("monkey");
+                iwm.thawRotation();
             }
             return MonkeyEvent.INJECT_SUCCESS;
         } catch (RemoteException ex) {
