@@ -230,7 +230,7 @@ public class Config {
         }
     }
 
-    private static List<ActivityInfo> loadActivitiesConfig(String fileName) {
+    public static List<ActivityInfo> loadActivitiesConfig(String fileName) {
         List<ActivityInfo> activities = new ArrayList<>();
         File configFile = new File(fileName);
         if (configFile.exists()) {
