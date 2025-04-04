@@ -1320,7 +1320,13 @@ public class Monkey {
         }
         String packageName = MonkeyUtils.getPackageFilter().getmValidPackages().iterator().next();
         PackageManager packageManager = systemContext.getPackageManager();
-        PackageInfo packageInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES);
+        PackageInfo packageInfo = null;
+        try {
+            packageInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES);
+        } catch (PackageManager.NameNotFoundException e) {
+            Logger.warningPrintln("// Warning: no activities found for package " + packageName);
+            return false;
+        }
         if (packageInfo.activities == null || packageInfo.activities.length == 0) {
             Logger.warningPrintln("// Warning: no activities found for package " + packageName);
             return false;
