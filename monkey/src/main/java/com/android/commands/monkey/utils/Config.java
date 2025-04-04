@@ -18,10 +18,15 @@
 
 package com.android.commands.monkey.utils;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 
@@ -221,6 +226,31 @@ public class Config {
             } catch (Exception e) {
                 e.printStackTrace();
                 throw new RuntimeException("Fail to load the configuration file at " + configFile);
+            }
+        }
+    }
+
+    private static List<ActivityInfo> loadActivitiesConfig(String fileName) {
+        List<ActivityInfo> activities = new ArrayList<>();
+        File configFile = new File(fileName);
+        if (configFile.exists()) {
+            try (FileInputStream fis = new FileInputStream(configFile)) {
+
+                JSONTokener tokener = new JSONTokener(fis);
+                JSONArray activitiesArray = new JSONArray(tokener);
+
+                for (int i = 0; i < activitiesArray.length(); i++) {
+                    JSONObject activityObject = activitiesArray.getJSONObject(i);
+                    String activityName = activityObject.getString("activityName");
+                    String exported = activityObject.getString("exported");
+                    JSONArray dataArray = activityObject.getJSONArray("data");
+
+                    ActivityInfo activityInfo = new ActivityInfo(activityName, exported.equals("true"));
+                    return activityInfo;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException("Fail to load the activities config file at " + configFile);
             }
         }
     }

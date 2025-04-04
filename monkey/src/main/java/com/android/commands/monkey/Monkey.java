@@ -401,6 +401,13 @@ public class Monkey {
      */
     private String mMappingFilePath = "";
 
+    /**
+     * Custom activity config file
+     */
+    private String mActivitiesConfigFile = "";
+
+    private boolean mAllExported = false;
+
 
 
     /**
@@ -443,6 +450,8 @@ public class Monkey {
      * Custom quick-application launch intent
      */
     private String mMainQuickAppActivity = null;
+
+    private List<ActivityInfo> mActivityInfos = null;
 
 
     /**
@@ -680,6 +689,10 @@ public class Monkey {
             return -1;
         }
 
+        if (!loadActivitiesConfigs()) {
+            return -1;
+        }
+
         // now set up additional data in preparation for launch
         if (mMainCategories.size() == 0 && mMainIntentAction == null) {
             mMainCategories.add(Intent.CATEGORY_LAUNCHER);
@@ -721,9 +734,17 @@ public class Monkey {
 
         // Using the restrictions provided (categories & packages), generate a list of
         // activities that we can actually switch to.
-        if (!getMainApps()) {
-            return -4;
+        
+        if (mAllExported) {
+            if (!getMainAppsAllExported()) {
+                return -4;
+            }
+        } else {
+            if (!getMainApps()) {
+                return -4;
+            }
         }
+
 
         // adding valid activity
         if (!addLauncherToValidActivity()) {
@@ -1133,6 +1154,12 @@ public class Monkey {
                     case "--ime":
                         ime = nextOptionData();
                         break;
+                    case "--activities-config-file":
+                        mActivitiesConfigFile = nextOptionData();
+                        break;
+                    case "--all-exported":
+                        mAllExported = true;
+                        break;
                     case "-h":
                         showUsage();
                         return false;
@@ -1281,6 +1308,44 @@ public class Monkey {
             return false;
         }
         APIAdapter.setActivityController(mAm, new ActivityController());
+        return true;
+    }
+
+    private boolean getMainAppsAllExported() {
+        Context systemContext = ContextUitls.getSystemContext();
+        if (systemContext == null){
+            return false;
+        }
+        String packageName = MonkeyUtils.getPackageFilter().getmValidPackages().iterator().next();
+        PackageManager packageManager = systemContext.getPackageManager();
+        PackageInfo packageInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES);
+        if (packageInfo.activities == null || packageInfo.activities.length == 0) {
+            Logger.warningPrintln("// Warning: no activities found for package " + packageName);
+            return false;
+        }
+        ActivityInfo[] activities = packageInfo.activities;
+        if (activities != null) {
+            for (ActivityInfo activityInfo : activities) {
+                String activityName = activityInfo.name;
+                String targetActivity = activityInfo.targetActivity;
+                if (targetActivity != null && targetActivity.length() > 0) {
+                    activityName = targetActivity;
+                }
+
+                if (activityInfo.exported) {
+                    if (mVerbose >= 2) { // very verbose
+                        Logger.println("//   + Using main activity " + activityName + " (from package "
+                                + packageName + ")");
+                    }
+                    mMainApps.add(new ComponentName(packageName, activityName));
+                } else {
+                    if (mVerbose >= 2) { // very very verbose
+                        Logger.println("//   - NOT USING activity " + activityName
+                                + " (from package " + packageName + ")");
+                    }
+                }
+            }
+        }
         return true;
     }
 
@@ -1765,6 +1830,13 @@ public class Monkey {
         }
         MonkeyUtils.getActivityFilter().addInvalidActivities(invalid);
 
+        return true;
+    }
+
+    private Boolean loadActivitiesConfigs() {
+        if (mActivitiesConfigFile != null) {
+            mActivityInfos = Config.loadActivitiesConfig(mActivitiesConfigFile);
+        }
         return true;
     }
 
