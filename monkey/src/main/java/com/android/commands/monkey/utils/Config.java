@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Properties;
 
 
+
+
 public class Config {
     static private final Properties configurations;
 
@@ -230,7 +232,7 @@ public class Config {
         }
     }
 
-    public static List<ActivityInfo> loadActivitiesConfig(String fileName) {
+    /*public static List<ActivityInfo> loadActivitiesConfig(String fileName) {
         List<ActivityInfo> activities = new ArrayList<>();
         File configFile = new File(fileName);
         if (configFile.exists()) {
@@ -253,7 +255,7 @@ public class Config {
                 throw new RuntimeException("Fail to load the activities config file at " + configFile);
             }
         }
-    }
+    }*/
 
     public static Object set(String key, String value) {
         return configurations.setProperty(key, value);

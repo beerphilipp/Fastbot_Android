@@ -1314,7 +1314,7 @@ public class Monkey {
     }
 
     private boolean getMainAppsAllExported() {
-        Context systemContext = ContextUitls.getSystemContext();
+        Context systemContext = ContextUtils.getSystemContext();
         if (systemContext == null){
             return false;
         }
@@ -1836,9 +1836,9 @@ public class Monkey {
     }
 
     private Boolean loadActivitiesConfigs() {
-        if (mActivitiesConfigFile != null) {
+        /*if (mActivitiesConfigFile != null) {
             mActivityInfos = Config.loadActivitiesConfig(mActivitiesConfigFile);
-        }
+        }*/
         return true;
     }
 
