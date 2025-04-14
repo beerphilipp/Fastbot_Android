@@ -63,6 +63,8 @@ import android.view.Surface;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import com.android.commands.monkey.Monkey;
+import com.android.commands.monkey.provider.IntentInfo;
+import com.android.commands.monkey.provider.IntentProvider;
 import com.android.commands.monkey.utils.MonkeyUtils;
 import com.android.commands.monkey.action.Action;
 import com.android.commands.monkey.action.FuzzAction;
@@ -228,6 +230,11 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
     private int appRestarted = 0;
     private boolean fullFuzzing = true;
 
+    private boolean restrictActivitiesToIntentConfig = false;
+
+    private ArrayList<IntentInfo> intentInfos = new ArrayList<>();
+    private ArrayList<IntentInfo> toStartIntentInfos = new ArrayList<>();
+
 
     public MonkeySourceApeNative(Random random, List<ComponentName> MainApps,
                                  long throttle, boolean randomizeThrottle, boolean permissionTargetSystem,
@@ -235,6 +242,43 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
 
         mRandom = random;
         mMainApps = MainApps;
+
+        // Use the info from the intentInfos JSON file
+        IntentInfo[] intentInfos = IntentProvider.getIntentInfos();
+        ArrayList<IntentInfo> finalIntentInfos = new ArrayList<>();
+        if (intentInfos == null) {
+            for (ComponentName cn : MainApps) {
+                IntentInfo intentInfo = new IntentInfo();
+                intentInfo.setActivityName(cn.getClassName());
+                intentInfo.setComponentName(cn);
+                finalIntentInfos.add(intentInfo);
+            }
+        } else {
+            for (ComponentName componentName : MainApps) {
+                IntentInfo intentInfo = null;
+                for (IntentInfo ifo : intentInfos) {
+                    if (componentName.getClassName().equals(ifo.getActivityName())) {
+                        intentInfo = ifo;
+                        break;
+                    }
+                }
+
+                if (!restrictActivitiesToIntentConfig && intentInfo == null) {
+                    IntentInfo newIntentInfo = new IntentInfo();
+                    newIntentInfo.setActivityName(componentName.getClassName());
+                    newIntentInfo.setComponentName(componentName);
+                    finalIntentInfos.add(newIntentInfo);
+                } else if (intentInfo != null ) {
+                    intentInfo.setComponentName(componentName);
+                    finalIntentInfos.add(intentInfo);
+                }
+            }
+        }
+        this.intentInfos = finalIntentInfos;
+        this.toStartIntentInfos = new ArrayList<>(Arrays.asList(intentInfos));
+        // sort toStartIntentInfos according to the priority
+        this.toStartIntentInfos.sort((a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
+
         mThrottle = throttle;
         mRandomizeThrottle = randomizeThrottle;
         mQ = new MonkeyEventQueue(random, 0, false); // we manage throttle
@@ -451,7 +495,8 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
         if (!hasEvent()) {
             if (appRestarted == 0) {
                 Logger.println("// the top activity is " + className + ", not testing app, need inject restart app");
-                startRandomMainApp();
+                startNextActivity();
+                //startRandomMainApp();
                 appRestarted = 1;
             } else {
                 if (!AndroidDevice.isAtPhoneLauncher(className)) {
@@ -481,7 +526,8 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
         if (cn == null) {
             Logger.println("// get activity api error");
             clearEvent();
-            startRandomMainApp();
+            startNextActivity();
+            //startRandomMainApp();
             return;
         }
         String className = cn.getClassName();
@@ -512,6 +558,29 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
         }
         if(AndroidDevice.clearPackage(packageName, permissions))
             Logger.infoPrintln("Package "+packageName+" cleared.");
+    }
+
+    protected void generateActivityEvents(IntentInfo intentInfo, boolean clearPackage, boolean startFromHistory) {
+        if (clearPackage) {
+            clearPackage(intentInfo.getComponentName().getPackageName());
+        }
+        generateShellEvents();
+        boolean startbyHistory = false; // if should start activity from history stack
+        if (startFromHistory && doHistoryRestart && RandomHelper.toss(historyRestartRate)) {
+            Logger.println("start from history task");
+            startbyHistory = true;
+        }
+        if (intentInfo.getData() != null) {
+            intentData = intentInfo.getData();
+            MonkeyDataActivityEvent e = new MonkeyDataActivityEvent(intentInfo.getComponentName(), intentAction, intentData, quickActivity, startbyHistory);
+            addEvent(e);
+        } else { // default
+            MonkeyActivityEvent e = new MonkeyActivityEvent(intentInfo.getComponentName(), startbyHistory);
+            addEvent(e);
+        }
+        generateThrottleEvent(startAfterNSecondsofsleep); // waiting for the loading of apps
+        generateSchemaEvents();
+        generateActivityScrollEvents();
     }
 
     /**
@@ -589,6 +658,14 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
         int total = mMainApps.size();
         int index = mRandom.nextInt(total);
         return mMainApps.get(index);
+    }
+
+    public IntentInfo getNextMainApp() {
+        return toStartIntentInfos.remove(0);
+    }
+
+    protected void startNextActivity() {
+        generateActivityEvents(getNextMainApp(), false, false);
     }
 
     protected void startRandomMainApp() {
@@ -1081,7 +1158,8 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
                 generateFuzzingEvents((FuzzAction) action);
                 break;
             case START:
-                generateActivityEvents(randomlyPickMainApp(), false, false);
+                generateActivityEvents(getNextMainApp(), false, false);
+                //generateActivityEvents(randomlyPickMainApp(), false, false);
                 break;
             case RESTART:
                 restartPackage(randomlyPickMainApp(), false, "start action(RESTART)");
