@@ -109,6 +109,7 @@ import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -278,6 +279,7 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
         this.toStartIntentInfos = new ArrayList<>(Arrays.asList(intentInfos));
         // sort toStartIntentInfos according to the priority
         //this.toStartIntentInfos.sort((a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
+        Collections.sort(this.toStartIntentInfos, (a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
 
         mThrottle = throttle;
         mRandomizeThrottle = randomizeThrottle;
