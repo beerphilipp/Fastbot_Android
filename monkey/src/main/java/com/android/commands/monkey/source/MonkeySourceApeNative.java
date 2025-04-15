@@ -277,7 +277,7 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
         this.intentInfos = finalIntentInfos;
         this.toStartIntentInfos = new ArrayList<>(Arrays.asList(intentInfos));
         // sort toStartIntentInfos according to the priority
-        this.toStartIntentInfos.sort((a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
+        //this.toStartIntentInfos.sort((a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
 
         mThrottle = throttle;
         mRandomizeThrottle = randomizeThrottle;
