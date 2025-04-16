@@ -646,12 +646,13 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
      * @param clearPackage If should clear user data and permissions or not
      * @param reason String reason to restart package
      */
-    protected void restartPackage(boolean clearPackage, String reason) {
+    protected void restartPackage(IntentInfo intentInfo, boolean clearPackage, String reason) {
         if (doHoming && RandomHelper.toss(homingRate)) {
             Logger.println("press HOME before app kill");
             generateKeyEvent(KeyEvent.KEYCODE_HOME);
             generateThrottleEvent(homeAfterNSecondsofsleep);
         }
+        ComponentName cn = intentInfo.getComponentName();
         String packageName = cn.getPackageName();
         Logger.infoPrintln("Try to restart package " + packageName + " for " + reason);
         stopPackage(cn.getPackageName());
@@ -1172,10 +1173,10 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
                 //generateActivityEvents(randomlyPickMainApp(), false, false);
                 break;
             case RESTART:
-                restartPackage( false, "start action(RESTART)");
+                restartPackage(getNextMainApp(), false, "start action(RESTART)");
                 break;
             case CLEAN_RESTART:
-                restartPackage( true, "start action(CLEAN_RESTART)");
+                restartPackage(getNextMainApp(), true, "start action(CLEAN_RESTART)");
                 break;
             case NOP:
                 generateThrottleEvent(action.getThrottle());
