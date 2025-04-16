@@ -1,5 +1,6 @@
 package com.android.commands.monkey.provider;
 
+import com.android.commands.monkey.utils.Logger;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
@@ -12,7 +13,7 @@ import java.util.List;
 
 public class IntentProvider {
 
-    private static final IntentInfo[] intentInfos;
+    private static IntentInfo[] intentInfos;
 
     private static final Type INTENT_INFO_TYPE = new TypeToken<List<IntentInfo>>() {
     }.getType();
@@ -23,7 +24,8 @@ public class IntentProvider {
             JsonReader reader = new JsonReader(new FileReader(stringFiles));
             intentInfos = new Gson().fromJson(reader, INTENT_INFO_TYPE);
         } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
+            intentInfos = null;
+            Logger.println("No intents.json file was provided.");
         }
     }
 
