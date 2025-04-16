@@ -110,6 +110,7 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -238,7 +239,7 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
 
 
     public MonkeySourceApeNative(Random random, List<ComponentName> MainApps,
-                                 long throttle, boolean randomizeThrottle, boolean permissionTargetSystem,
+                                 long throttle, boolean randomizeThrottle, boolean permissionTargetSystem, boolean allExported,
                                  File outputDirectory) {
 
         mRandom = random;
@@ -264,7 +265,7 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
                     }
                 }
 
-                if (!restrictActivitiesToIntentConfig && intentInfo == null) {
+                if (!allExported && intentInfo == null) {
                     IntentInfo newIntentInfo = new IntentInfo();
                     newIntentInfo.setActivityName(componentName.getClassName());
                     newIntentInfo.setComponentName(componentName);
@@ -279,7 +280,12 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
         this.toStartIntentInfos = new ArrayList<>(this.intentInfos);
         // sort toStartIntentInfos according to the priority
         //this.toStartIntentInfos.sort((a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
-        Collections.sort(this.toStartIntentInfos, (a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
+        Collections.sort(this.toStartIntentInfos, new Comparator<IntentInfo>() {
+            @Override
+            public int compare(IntentInfo a, IntentInfo b) {
+                return Integer.compare(b.getPriority(), a.getPriority());
+            }
+        });
 
         mThrottle = throttle;
         mRandomizeThrottle = randomizeThrottle;

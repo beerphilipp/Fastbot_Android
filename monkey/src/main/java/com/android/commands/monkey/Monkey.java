@@ -793,7 +793,7 @@ public class Monkey {
                 AiClient.loadResMapping(mMappingFilePath);
             }
 
-            mEventSource = new MonkeySourceApeNative(mRandom, mMainApps, mThrottle, mRandomizeThrottle, mPermissionTargetSystem, mOutputDirectory);
+            mEventSource = new MonkeySourceApeNative(mRandom, mMainApps, mThrottle, mRandomizeThrottle, mPermissionTargetSystem, mAllExported, mOutputDirectory);
             mEventSource.setVerbose(mVerbose);
 
             // grant all permissions required, enabled by default
