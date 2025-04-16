@@ -691,10 +691,6 @@ public class Monkey {
             return -1;
         }
 
-        if (!loadActivitiesConfigs()) {
-            return -1;
-        }
-
         // now set up additional data in preparation for launch
         if (mMainCategories.size() == 0 && mMainIntentAction == null) {
             mMainCategories.add(Intent.CATEGORY_LAUNCHER);
@@ -1838,13 +1834,6 @@ public class Monkey {
         }
         MonkeyUtils.getActivityFilter().addInvalidActivities(invalid);
 
-        return true;
-    }
-
-    private Boolean loadActivitiesConfigs() {
-        /*if (mActivitiesConfigFile != null) {
-            mActivityInfos = Config.loadActivitiesConfig(mActivitiesConfigFile);
-        }*/
         return true;
     }
 
