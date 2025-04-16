@@ -646,7 +646,7 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
      * @param clearPackage If should clear user data and permissions or not
      * @param reason String reason to restart package
      */
-    protected void restartPackage(ComponentName cn, boolean clearPackage, String reason) {
+    protected void restartPackage(boolean clearPackage, String reason) {
         if (doHoming && RandomHelper.toss(homingRate)) {
             Logger.println("press HOME before app kill");
             generateKeyEvent(KeyEvent.KEYCODE_HOME);
@@ -655,7 +655,8 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
         String packageName = cn.getPackageName();
         Logger.infoPrintln("Try to restart package " + packageName + " for " + reason);
         stopPackage(cn.getPackageName());
-        generateActivityEvents(cn, clearPackage, true);
+        //generateActivityEvents(cn, clearPackage, true);
+        generateActivityEvents(getNextMainApp(), clearPackage, true);
     }
 
     /**
@@ -930,7 +931,8 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
             //scroll up
             generateScrollEventAt(bounds, SCROLL_BOTTOM_UP);
             // launch app
-            generateActivityEvents(randomlyPickMainApp(), false, false);
+            generateActivityEvents(getNextMainApp(), false, false);
+            //generateActivityEvents(randomlyPickMainApp(), false, false);
             generateThrottleEvent(1000);
             return true;
         }
@@ -1170,10 +1172,10 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
                 //generateActivityEvents(randomlyPickMainApp(), false, false);
                 break;
             case RESTART:
-                restartPackage(randomlyPickMainApp(), false, "start action(RESTART)");
+                restartPackage( false, "start action(RESTART)");
                 break;
             case CLEAN_RESTART:
-                restartPackage(randomlyPickMainApp(), true, "start action(CLEAN_RESTART)");
+                restartPackage( true, "start action(CLEAN_RESTART)");
                 break;
             case NOP:
                 generateThrottleEvent(action.getThrottle());
