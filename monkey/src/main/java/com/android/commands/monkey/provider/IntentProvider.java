@@ -15,8 +15,7 @@ public class IntentProvider {
 
     private static IntentInfo[] intentInfos;
 
-    private static final Type INTENT_INFO_TYPE = new TypeToken<List<IntentInfo>>() {
-    }.getType();
+    private static final Type INTENT_INFO_TYPE = IntentInfo[].class;
 
     static {
         File stringFiles = new File("/sdcard/intents.json");

@@ -276,16 +276,16 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
                 }
             }
         }
+
         this.intentInfos = finalIntentInfos;
-        this.toStartIntentInfos = new ArrayList<>(this.intentInfos);
         // sort toStartIntentInfos according to the priority
-        //this.toStartIntentInfos.sort((a, b) -> Integer.compare(b.getPriority(), a.getPriority()));
-        Collections.sort(this.toStartIntentInfos, new Comparator<IntentInfo>() {
+        Collections.sort(this.intentInfos, new Comparator<IntentInfo>() {
             @Override
             public int compare(IntentInfo a, IntentInfo b) {
                 return Integer.compare(b.getPriority(), a.getPriority());
             }
         });
+        this.toStartIntentInfos = new ArrayList<>(this.intentInfos);
 
         mThrottle = throttle;
         mRandomizeThrottle = randomizeThrottle;
@@ -671,7 +671,22 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
     }
 
     public IntentInfo getNextMainApp() {
-        return toStartIntentInfos.remove(0);
+        // We take the following approach:
+        // We try out the activities that the config file provides first in descending order of priority
+        // If we have exhausted all the activities in the config file, we randomly pick one, while we put emphasis on the top elements in the intentInfos list
+        if (!toStartIntentInfos.isEmpty()) {
+            return toStartIntentInfos.get(0);
+        }
+
+        if (!intentInfos.isEmpty()) {
+            int size = intentInfos.size();
+            double bias = 1.5;
+            double rand = Math.pow(Math.random(), bias);
+            int index = (int) (rand * size);
+            return intentInfos.get(index);
+        }
+        Logger.errorPrintln("Error: No activity to start. This code should never be reached.");
+        return null;
     }
 
     protected void startNextActivity() {
