@@ -15,16 +15,31 @@ public class IntentProvider {
 
     private static IntentInfo[] intentInfos;
 
-    private static final Type INTENT_INFO_TYPE = IntentInfo[].class;
+    private static final Type INTENT_INFO_LIST_TYPE = new TypeToken<List<IntentInfo>>(){}.getType();
 
     static {
         File stringFiles = new File("/sdcard/intents.json");
-        try {
-            JsonReader reader = new JsonReader(new FileReader(stringFiles));
-            intentInfos = new Gson().fromJson(reader, INTENT_INFO_TYPE);
+        try (FileReader fileReader = new FileReader(stringFiles);
+             JsonReader reader = new JsonReader(fileReader)) {
+
+            List<IntentInfo> tempList = new Gson().fromJson(reader, INTENT_INFO_LIST_TYPE);
+
+            if (tempList != null) {
+                intentInfos = tempList.toArray(new IntentInfo[0]); // Or new IntentInfo[tempList.size()]
+            } else {
+                intentInfos = null;
+                Logger.println("intents.json parsed to null list");
+            }
         } catch (FileNotFoundException e) {
             intentInfos = null;
             Logger.println("No intents.json file was provided.");
+        } catch (IOException e) {
+            intentInfos = new IntentInfo[0];
+            Logger.println("IO error reading intents.json: " + e.getMessage());
+            e.printStackTrace(); // For debugging
+        } catch (Exception e) { // Catch other potential exceptions (e.g., JsonSyntaxException)
+            intentInfos = null;
+            Logger.println("Error parsing intents.json: " + e.getMessage());
         }
     }
 
