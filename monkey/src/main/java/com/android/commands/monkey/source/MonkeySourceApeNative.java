@@ -569,6 +569,7 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
     }
 
     protected void generateActivityEvents(IntentInfo intentInfo, boolean clearPackage, boolean startFromHistory) {
+        Logger.println("Generating activity events for " + intentInfo.getComponentName().getClassName());
         if (clearPackage) {
             clearPackage(intentInfo.getComponentName().getPackageName());
         }
@@ -580,6 +581,7 @@ public class MonkeySourceApeNative implements MonkeyEventSource {
         }
         if (intentInfo.getData() != null) {
             intentData = intentInfo.getData();
+            Logger.println("Generating activity events with intent data: " + intentData + " for " + intentInfo.getComponentName().getClassName());
             MonkeyDataActivityEvent e = new MonkeyDataActivityEvent(intentInfo.getComponentName(), intentAction, intentData, quickActivity, startbyHistory);
             addEvent(e);
         } else { // default

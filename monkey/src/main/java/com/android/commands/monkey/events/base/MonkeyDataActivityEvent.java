@@ -23,6 +23,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.IWindowManager;
 
+import com.android.commands.monkey.utils.Logger;
 import com.android.commands.monkey.events.MonkeyEvent;
 import com.android.commands.monkey.framework.AndroidDevice;
 import com.android.commands.monkey.utils.Logger;
@@ -75,7 +76,11 @@ public class MonkeyDataActivityEvent extends MonkeyEvent {
         } else {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
         }
+        if (mApp != null) {
+            intent.setComponent(mApp);
+        }
         intent.putExtra(quickappStartActivityIntentPutExtra, mIntentdata);
+        Logger.println("MonkeyDataActivityEvent: " + mIntentaction + " " + mIntentdata);
         return intent;
     }
 
