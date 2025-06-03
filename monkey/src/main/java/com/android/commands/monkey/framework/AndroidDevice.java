@@ -18,6 +18,7 @@
 
 package com.android.commands.monkey.framework;
 
+
 import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.ActivityManager.RunningTaskInfo;
 import android.app.IActivityManager;
@@ -34,13 +35,18 @@ import android.content.pm.ResolveInfo;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.hardware.display.DisplayManagerGlobal;
+import android.hardware.input.IInputManager;
 import android.os.IBinder;
 import android.os.IPowerManager;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemClock;
 import android.os.UserHandle;
 import android.provider.MediaStore;
 import android.view.IWindowManager;
+import android.view.InputDevice;
+import android.view.KeyCharacterMap;
+import android.view.KeyEvent;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -78,6 +84,8 @@ import static com.android.commands.monkey.utils.Config.grantAllPermission;
  */
 public class AndroidDevice {
 
+    public static IInputManager iInputManager;
+
     public static IActivityManager iActivityManager;
     public static IWindowManager iWindowManager;
     public static IPackageManager iPackageManager;
@@ -110,6 +118,9 @@ public class AndroidDevice {
         iWindowManager = mWm;
         iPackageManager = mPm;
         IME_ADB_KEYBOARD = keyboard;
+
+        IBinder binder = ServiceManager.getService(Context.INPUT_SERVICE);
+        iInputManager = IInputManager.Stub.asInterface(binder);
 
         inputMethodManager = (InputMethodManager) ContextUtils.getSystemContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         packageManager = ContextUtils.getSystemContext().getPackageManager();
@@ -597,11 +608,150 @@ public class AndroidDevice {
     }
 
     public static boolean sendText(String text) {
-        Intent intent = new Intent();
+        /*Intent intent = new Intent();
         intent.setAction(IME_MESSAGE);
         intent.putExtra("msg", text);
-        return sendIMEIntent(intent);
+        return sendIMEIntent(intent);*/
+        return injectString(text);
         // sendIMEActionGo();
+    }
+
+    private static boolean injectString(String text) {
+        if (iInputManager == null) {
+            Logger.errorPrintln("** Error: IInputManager not initialized. Cannot inject text.");
+            return false;
+        }
+        if (text == null || text.isEmpty()) {
+            return true; // Nothing to inject
+        }
+
+        // Get the key character map for the virtual keyboard.
+        // KeyCharacterMap.VIRTUAL_KEYBOARD is deprecated from API 34,
+        // KeyCharacterMap.DEVICE_ID_VIRTUAL can be used for API 29+
+        // For broader compatibility, you might need to load it differently or handle absence.
+        KeyCharacterMap kcm = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD);
+        if (kcm == null) {
+            Logger.errorPrintln("** Error: KeyCharacterMap for virtual keyboard is null.");
+            // Fallback: attempt to send events without full KCM mapping (will be very limited)
+            // Or, you might decide to fail here.
+            // For this example, we'll proceed but acknowledge limitations.
+        }
+
+        char[] chars = text.toCharArray();
+
+        for (char c : chars) {
+            // Get KeyEvents for the character
+            // This is a simplified approach. A full implementation needs to handle all characters,
+            // locales, and potentially complex input sequences.
+            // KeyCharacterMap.getEvents() is helpful here if KCM is available.
+            KeyEvent[] events = null;
+            if (kcm != null) {
+                events = kcm.getEvents(new char[]{c});
+            }
+
+            if (events != null && events.length > 0) {
+                for (KeyEvent event : events) {
+                    // We need to create new event objects with current time and correct source.
+                    // The events from kcm.getEvents() might not have the correct time or device ID.
+                    long now = SystemClock.uptimeMillis();
+                    KeyEvent newEvent = KeyEvent.changeTimeRepeat(event, now, 0);
+                    // Ensure the event source is set, e.g., keyboard
+                    // The original event from kcm might have deviceId -1, we should use a valid one.
+                    // KeyCharacterMap.VIRTUAL_KEYBOARD is -1.
+                    // Using 0 (built-in keyboard) or a specific virtual device ID.
+                    if (newEvent.getDeviceId() == KeyCharacterMap.VIRTUAL_KEYBOARD) {
+                        newEvent = new KeyEvent(now, now, newEvent.getAction(), newEvent.getKeyCode(),
+                                0, newEvent.getMetaState(), 0,
+                                newEvent.getScanCode(), newEvent.getFlags(), InputDevice.SOURCE_KEYBOARD);
+                    } else {
+                        newEvent = new KeyEvent(now, now, newEvent.getAction(), newEvent.getKeyCode(),
+                                0, newEvent.getMetaState(), newEvent.getDeviceId(),
+                                newEvent.getScanCode(), newEvent.getFlags(), InputDevice.SOURCE_KEYBOARD);
+                    }
+
+
+                    if (!injectKeyEvent(newEvent)) {
+                        Logger.errorPrintln("Failed to inject key event for char: " + c);
+                        // Optionally, stop on first failure or try to continue
+                        return false;
+                    }
+                }
+            } else {
+                // Fallback for characters not directly mappable by kcm.getEvents() or if kcm is null
+                // This is a very basic fallback, only handles simple ASCII.
+                // A more robust solution would involve more complex logic or a custom mapping.
+                Logger.errorPrintln("No KeyEvent mapping found for char: " + c);
+                if (!sendBasicKeyEvents(c)) {
+                    Logger.errorPrintln("Failed to inject basic key event for char: " + c);
+                }
+            }
+        }
+        return true;
+    }
+
+    private static boolean sendBasicKeyEvents(char c) {
+        int keyCode = -1;
+        int metaState = 0;
+
+        // Simplified mapping (extend as needed, or use a proper library/mapping)
+        if (c >= 'a' && c <= 'z') {
+            keyCode = KeyEvent.KEYCODE_A + (c - 'a');
+        } else if (c >= 'A' && c <= 'Z') {
+            keyCode = KeyEvent.KEYCODE_A + (c - 'A');
+            metaState = KeyEvent.META_SHIFT_ON;
+        } else if (c >= '0' && c <= '9') {
+            keyCode = KeyEvent.KEYCODE_0 + (c - '0');
+        } else {
+            switch (c) {
+                case ' ': keyCode = KeyEvent.KEYCODE_SPACE; break;
+                case '.': keyCode = KeyEvent.KEYCODE_PERIOD; break;
+                case ',': keyCode = KeyEvent.KEYCODE_COMMA; break;
+                case '\n': keyCode = KeyEvent.KEYCODE_ENTER; break;
+                // Add more common characters here
+                default:
+                    Logger.errorPrintln("No basic mapping for character: " + c);
+                    return false;
+            }
+        }
+
+        if (keyCode != -1) {
+            long now = SystemClock.uptimeMillis();
+            KeyEvent downEvent = new KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, metaState,
+                    -1, 0, KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD);
+            KeyEvent upEvent = new KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, metaState,
+                    -1, 0, KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD);
+
+            return injectKeyEvent(downEvent) && injectKeyEvent(upEvent);
+        }
+        return false;
+    }
+
+
+    /**
+     * Injects a single KeyEvent.
+     *
+     * @param event The KeyEvent to inject.
+     * @return true if successful, false otherwise.
+     */
+    private static boolean injectKeyEvent(KeyEvent event) {
+        if (iInputManager == null) {
+            Logger.errorPrintln("** Error: IInputManager not initialized. Cannot inject KeyEvent.");
+            return false;
+        }
+        try {
+            // INJECT_INPUT_EVENT_MODE_WAIT_FOR_FINISH ensures the event is processed
+            // before returning, which is generally safer for sequences.
+            // Use MODE_ASYNC if you don't need to wait.
+            boolean success = iInputManager.injectInputEvent(event, 2);
+            if (!success) {
+                Logger.errorPrintln("Failed to inject KeyEvent: " + event);
+            }
+            return success;
+        } catch (RemoteException e) {
+            Logger.errorPrintln("RemoteException during injectInputEvent: " + e.getMessage());
+            e.printStackTrace(); // For more detailed logs
+            return false;
+        }
     }
 
     /**
